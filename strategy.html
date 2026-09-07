@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Belåningsstrategi – Malmö</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700&display=swap');
+
+  :root {
+    --bg:#0e0f13;--surface:#16181f;--surface2:#1e2029;--border:#2a2d38;
+    --accent-a:#c8f56a;--accent-b:#5b8fff;--accent-c:#f9a84d;--accent-warn:#ff7c5c;
+    --text:#e8eaf0;--muted:#7a7f94;--green:#4ade80;--red:#f87171;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;min-height:100vh;padding:2rem;}
+  .grid-bg{position:fixed;inset:0;background-image:linear-gradient(rgba(91,143,255,.04) 1px,transparent 1px),linear-gradient(90deg,rgba(91,143,255,.04) 1px,transparent 1px);background-size:48px 48px;pointer-events:none;z-index:0;}
+  .wrapper{max-width:1340px;margin:0 auto;position:relative;z-index:1;}
+  header{margin-bottom:2.5rem;border-left:3px solid var(--accent-a);padding-left:1.5rem;}
+  header h1{font-family:'DM Serif Display',serif;font-size:clamp(1.8rem,4vw,2.8rem);line-height:1.15;}
+  header p{color:var(--muted);font-size:.9rem;margin-top:.4rem;font-family:'DM Mono',monospace;}
+  .layout{display:grid;grid-template-columns:320px 1fr;gap:1.5rem;align-items:start;}
+  @media(max-width:980px){.layout{grid-template-columns:1fr;}}
+  .panel{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;}
+  .panel-title{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:1.1rem;font-family:'DM Mono',monospace;}
+  .slider-group{margin-bottom:1.2rem;}
+  .slider-label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:.4rem;}
+  .slider-label span:first-child{font-size:.82rem;color:var(--text);font-weight:600;}
+  .slider-val{font-family:'DM Mono',monospace;font-size:.88rem;color:var(--accent-a);font-weight:500;}
+  input[type=range]{width:100%;-webkit-appearance:none;height:4px;border-radius:2px;background:var(--border);outline:none;cursor:pointer;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent-a);cursor:pointer;box-shadow:0 0 8px rgba(200,245,106,.4);transition:box-shadow .2s;}
+  input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 16px rgba(200,245,106,.7);}
+  .divider{height:1px;background:var(--border);margin:1.1rem 0;}
+  .results-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem;}
+  @media(max-width:720px){.results-grid{grid-template-columns:1fr;}}
+  .scenario-card{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:1.1rem;position:relative;overflow:hidden;transition:border-color .3s;}
+  .scenario-card.winner-a{border-color:var(--accent-a);}
+  .scenario-card.winner-b{border-color:var(--accent-b);}
+  .scenario-card.winner-c{border-color:var(--accent-c);}
+  .scenario-card.winner-a::before,.scenario-card.winner-b::before,.scenario-card.winner-c::before{content:'BÄST';position:absolute;top:10px;right:10px;font-size:.6rem;letter-spacing:.1em;padding:2px 7px;border-radius:3px;font-weight:700;font-family:'DM Mono',monospace;color:#000;}
+  .scenario-card.winner-a::before{background:var(--accent-a);}
+  .scenario-card.winner-b::before{background:var(--accent-b);color:#fff;}
+  .scenario-card.winner-c::before{background:var(--accent-c);}
+  .sc-label{font-size:.65rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:.45rem;font-family:'DM Mono',monospace;}
+  .sc-title{font-family:'DM Serif Display',serif;font-size:1rem;margin-bottom:.8rem;line-height:1.3;}
+  .card-section-title{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-family:'DM Mono',monospace;margin:.65rem 0 .25rem;opacity:.7;}
+  .metric{display:flex;justify-content:space-between;align-items:center;padding:.27rem 0;border-bottom:1px solid var(--border);font-size:.77rem;}
+  .metric:last-child{border-bottom:none;}
+  .metric-key{color:var(--muted);}
+  .metric-val{font-family:'DM Mono',monospace;font-weight:500;color:var(--text);}
+  .metric-val.pos{color:var(--green);}
+  .metric-val.neg{color:var(--red);}
+  .metric-val.blue{color:var(--accent-b);}
+  .metric-deduction{color:var(--green);font-size:.73rem;}
+  .metric.highlight{background:rgba(255,255,255,.03);border-radius:4px;padding:.27rem .4rem;margin:.18rem -.4rem;}
+
+  /* Cost comparison box */
+  .cost-compare-box{margin-top:.75rem;border-radius:7px;overflow:hidden;border:1px solid var(--border);}
+  .cost-compare-header{font-size:.62rem;letter-spacing:.1em;text-transform:uppercase;font-family:'DM Mono',monospace;padding:.45rem .75rem;background:rgba(0,0,0,.3);color:var(--muted);}
+  .cost-compare-inner{padding:.6rem .75rem;}
+  .cost-row{display:flex;justify-content:space-between;font-size:.77rem;padding:.22rem 0;border-bottom:1px solid var(--border);}
+  .cost-row:last-child{border-bottom:none;}
+  .cost-row-key{color:var(--muted);}
+  .cost-row-val{font-family:'DM Mono',monospace;font-weight:500;}
+  .cost-diff-row{display:flex;justify-content:space-between;align-items:center;margin-top:.5rem;padding:.35rem .5rem;border-radius:5px;font-size:.8rem;font-weight:700;}
+  .cost-diff-row.cheaper{background:rgba(74,222,128,.1);color:var(--green);}
+  .cost-diff-row.pricier{background:rgba(248,113,113,.1);color:var(--red);}
+
+  /* Analysis box */
+  .analysis-box{margin-top:.7rem;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:7px;padding:.7rem .75rem;font-size:.75rem;line-height:1.55;color:var(--muted);}
+  .analysis-box strong{font-weight:700;}
+  .analysis-box .pos{color:var(--green);}
+  .analysis-box .neg{color:var(--red);}
+  .analysis-box .neutral{color:var(--accent-a);}
+
+  /* Chart */
+  .chart-area{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;margin-bottom:1.5rem;}
+  .chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;flex-wrap:wrap;gap:.5rem;}
+  .chart-legend{display:flex;gap:1.2rem;flex-wrap:wrap;}
+  .legend-item{display:flex;align-items:center;gap:.4rem;font-size:.75rem;color:var(--muted);}
+  .legend-dot{width:8px;height:8px;border-radius:50%;}
+  canvas{width:100%!important;}
+
+  .verdict{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem;display:flex;gap:1.5rem;align-items:center;}
+  .verdict-badge{flex-shrink:0;width:60px;height:60px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.5rem;background:rgba(200,245,106,.1);border:2px solid var(--accent-a);}
+  .verdict-text h3{font-family:'DM Serif Display',serif;font-size:1.1rem;margin-bottom:.3rem;}
+  .verdict-text p{font-size:.82rem;color:var(--muted);line-height:1.6;}
+  .verdict-text strong{color:var(--accent-a);}
+  .tag{display:inline-block;font-size:.65rem;letter-spacing:.08em;text-transform:uppercase;background:rgba(91,143,255,.15);color:var(--accent-b);padding:2px 8px;border-radius:4px;margin-right:.4rem;font-family:'DM Mono',monospace;}
+  .tag.warn{background:rgba(255,124,92,.15);color:var(--accent-warn);}
+  .tag.green{background:rgba(74,222,128,.15);color:var(--green);}
+  .breakeven-row{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:.65rem 1rem;display:flex;justify-content:space-between;align-items:center;margin-top:.55rem;font-size:.8rem;}
+  .breakeven-row span:last-child{font-family:'DM Mono',monospace;color:var(--accent-a);font-weight:600;}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<div class="wrapper">
+  <header>
+    <h1>Belåningsstrategi<br><em>Malmö 2026</em></h1>
+    <p>// Tre scenarier — justera parametrarna i realtid</p>
+  </header>
+
+  <div class="layout">
+    <!-- LEFT: Controls -->
+    <div>
+      <div class="panel">
+        <div class="panel-title">// Bostad & lån</div>
+
+        <div class="slider-group">
+          <div class="slider-label"><span>Köpeskilling</span><span class="slider-val" id="val-purchase">9,0 mkr</span></div>
+          <input type="range" id="sl-purchase" min="5000000" max="10000000" step="100000" value="9000000">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>Bolåneränta (rörlig)</span><span class="slider-val" id="val-rate">2,7%</span></div>
+          <input type="range" id="sl-rate" min="1.5" max="6" step="0.05" value="2.70">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>Avgift bostadsrätt/mån</span><span class="slider-val" id="val-fee">4 000 kr</span></div>
+          <input type="range" id="sl-fee" min="0" max="12000" step="100" value="4000">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>Nuvarande boendekostnad/mån</span><span class="slider-val" id="val-currentcost">15 000 kr</span></div>
+          <input type="range" id="sl-currentcost" min="0" max="35000" step="500" value="15000">
+        </div>
+
+        <div class="divider"></div>
+        <div class="panel-title">// Avkastning & horisont</div>
+
+        <div class="slider-group">
+          <div class="slider-label"><span>Förväntad fondavkastning/år</span><span class="slider-val" id="val-fund">8,0%</span></div>
+          <input type="range" id="sl-fund" min="2" max="14" step="0.5" value="8">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>Bostadsprisökning/år</span><span class="slider-val" id="val-housing">6,0%</span></div>
+          <input type="range" id="sl-housing" min="0" max="12" step="0.5" value="6">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>Tidshorisont</span><span class="slider-val" id="val-years">10 år</span></div>
+          <input type="range" id="sl-years" min="3" max="25" step="1" value="10">
+        </div>
+
+        <div class="divider"></div>
+        <div class="panel-title">// Sparande</div>
+
+        <div class="slider-group">
+          <div class="slider-label"><span>Befintligt sparkapital (fonder)</span><span class="slider-val" id="val-existing">0 kr</span></div>
+          <input type="range" id="sl-existing" min="0" max="10000000" step="100000" value="0">
+        </div>
+        <div class="slider-group">
+          <div class="slider-label"><span>Månadsbudget för fondsparande</span><span class="slider-val" id="val-monthly">0 kr</span></div>
+          <input type="range" id="sl-monthly" min="0" max="50000" step="500" value="0">
+        </div>
+        <p style="font-size:.72rem;color:var(--muted);line-height:1.5;margin-top:-.4rem">
+          I B och C dras amorteringen från månadsbudgeten. Befintligt sparkapital inkluderas i alla scenarier och växer med fondavkastning.
+        </p>
+
+        <div class="breakeven-row"><span>Break-even B vs A</span><span id="breakeven-b">—</span></div>
+        <div class="breakeven-row"><span>Break-even C vs A</span><span id="breakeven-c">—</span></div>
+      </div>
+    </div>
+
+    <!-- RIGHT: Results -->
+    <div>
+      <div class="results-grid" id="results-grid"></div>
+      <div class="chart-area">
+        <div class="chart-header">
+          <div class="panel-title" style="margin:0">// Total nettoförmögenhet över tid</div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-a)"></div>A – 50%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-c)"></div>C – 60%</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--accent-b)"></div>B – 70%</div>
+          </div>
+        </div>
+        <canvas id="chart" height="230"></canvas>
+      </div>
+      <div class="verdict" id="verdict"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+const fmtKr  = n => Math.round(n).toLocaleString('sv-SE') + ' kr';
+const fmtPct = n => n.toFixed(2).replace('.', ',') + '%';
+
+let state = {
+  purchase: 9000000, rate: 2.70, fee: 4000, currentCost: 15000,
+  fundReturn: 8.0, housingGrowth: 6.0, years: 10,
+  existingSavings: 0, monthlyBudget: 0
+};
+
+function annualDeduction(annualInterest) {
+  if (annualInterest <= 100000) return annualInterest * 0.30;
+  return 30000 + (annualInterest - 100000) * 0.21;
+}
+
+// existingSavings grows identically in all scenarios — it's neutral to comparison
+// but included in absolute wealth figure
+function calcScenario(P, ltv, amortRate, r, extraFundStart, monthlyFundContrib, years, houseR, fundR, existingSavings, fee) {
+  const loan        = P * ltv;
+  const ek          = P - loan;
+  const annInterest = loan * r;
+  const deduction   = annualDeduction(annInterest);
+  const netInterest = annInterest - deduction;
+
+  const mGross     = annInterest / 12;
+  const mDeduction = deduction / 12;
+  const mNet       = netInterest / 12;
+  const mAmort     = loan * amortRate / 12;
+  const mTotal     = mNet + mAmort + fee;  // includes fee
+  const effRate    = netInterest / loan * 100;
+  const roe        = (P * houseR) / ek * 100;
+
+  // Yearly simulation: bostad equity + fund portfolio (strategy-specific) + existing savings
+  let data = [];
+  let houseVal     = P;
+  let loanRem      = loan;
+  let fund         = extraFundStart;         // strategy-specific start capital
+  let existingFund = existingSavings;        // same in all scenarios
+
+  for (let y = 0; y <= years; y++) {
+    data.push(Math.round(houseVal - loanRem + fund + existingFund));
+    if (y < years) {
+      houseVal     *= (1 + houseR);
+      loanRem       = Math.max(0, loanRem - loan * amortRate);
+      fund          = fund * (1 + fundR) + monthlyFundContrib * 12;
+      existingFund  = existingFund * (1 + fundR);
+    }
+  }
+
+  return {
+    loan, ek, annInterest, deduction, netInterest,
+    mGross, mDeduction, mNet, mAmort, mTotal, fee,
+    effRate, roe, data,
+    final: data[years],
+    monthlyFundContrib
+  };
+}
+
+function calc(s) {
+  const P      = s.purchase;
+  const r      = s.rate / 100;
+  const fundR  = s.fundReturn / 100;
+  const houseR = s.housingGrowth / 100;
+  const yrs    = s.years;
+  const budget = s.monthlyBudget;
+  const exist  = s.existingSavings;
+  const fee    = s.fee;
+
+  const fundStartC   = P * 0.10;
+  const fundStartB   = P * 0.20;
+  const amortMonthC  = P * 0.60 * 0.01 / 12;
+  const amortMonthB  = P * 0.70 * 0.01 / 12;
+
+  const fundMonthA = budget;
+  const fundMonthC = Math.max(0, budget - amortMonthC);
+  const fundMonthB = Math.max(0, budget - amortMonthB);
+
+  const A = calcScenario(P, 0.50, 0.00, r, 0,           fundMonthA, yrs, houseR, fundR, exist, fee);
+  const C = calcScenario(P, 0.60, 0.01, r, fundStartC,   fundMonthC, yrs, houseR, fundR, exist, fee);
+  const B = calcScenario(P, 0.70, 0.01, r, fundStartB,   fundMonthB, yrs, houseR, fundR, exist, fee);
+
+  const beB = (B.netInterest - A.netInterest) / fundStartB * 100;
+  const beC = (C.netInterest - A.netInterest) / fundStartC * 100;
+
+  const finals = { A: A.final, B: B.final, C: C.final };
+  const sorted = ['A','C','B'].sort((a,b) => finals[b] - finals[a]);
+
+  return { A, B, C, sorted, finals, beB, beC, P, yrs,
+           amortMonthC, amortMonthB, fundMonthA, fundMonthC, fundMonthB };
+}
+
+function cardHtml(sc, label, color, myKey, fundStart, c) {
+  const isWinner  = c.sorted[0] === myKey;
+  const winClass  = isWinner ? `winner-${myKey.toLowerCase()}` : '';
+  const curCost   = state.currentCost;
+  const costDiff  = sc.mTotal - curCost;
+  const diffClass = costDiff <= 0 ? 'cheaper' : 'pricier';
+  const diffLabel = costDiff <= 0
+    ? `${fmtKr(Math.abs(costDiff))} billigare/mån`
+    : `${fmtKr(costDiff)} dyrare/mån`;
+
+  // Amort analysis text
+  let amortAnalysis = '';
+  if (myKey === 'A') {
+    amortAnalysis = `Ingen amortering — hela <span class="neutral">${fmtKr(c.fundMonthA)}/mån</span> går till fonder.`;
+  } else if (myKey === 'C') {
+    amortAnalysis = `Amortering <span class="neg">−${fmtKr(c.amortMonthC)}/mån</span> minskar fondsparandet. Effektivt fondtillskott: <span class="neutral">${fmtKr(c.fundMonthC)}/mån</span>. Amorteringen ger dock en garanterad "avkastning" = effektiv ränta <span class="neutral">${fmtPct(sc.effRate)}</span>.`;
+  } else {
+    amortAnalysis = `Amortering <span class="neg">−${fmtKr(c.amortMonthB)}/mån</span> äter mest av fondsparandet. Effektivt fondtillskott: <span class="neutral">${fmtKr(c.fundMonthB)}/mån</span>. Kompenseras av startkapital <span class="neutral">${fmtKr(fundStart)}</span> och ROE <span class="neutral">${sc.roe.toFixed(1)}%/år</span>.`;
+  }
+
+  return `
+    <div class="scenario-card ${winClass}">
+      <div class="sc-label" style="color:${color}">Scenario ${myKey}</div>
+      <div class="sc-title">${label}</div>
+
+      <div class="card-section-title">Lån & kapital</div>
+      <div class="metric"><span class="metric-key">Lånebelopp</span><span class="metric-val">${fmtKr(sc.loan)}</span></div>
+      <div class="metric"><span class="metric-key">Eget kapital bostad</span><span class="metric-val">${fmtKr(sc.ek)}</span></div>
+      <div class="metric"><span class="metric-key">Startkapital fonder</span><span class="metric-val" style="color:${color}">${fmtKr(fundStart)}</span></div>
+      ${state.existingSavings > 0 ? `<div class="metric"><span class="metric-key">Befintligt sparkapital</span><span class="metric-val pos">${fmtKr(state.existingSavings)}</span></div>` : ''}
+
+      <div class="card-section-title">Räntekostnad</div>
+      <div class="metric"><span class="metric-key">Ränta brutto/mån</span><span class="metric-val neg">−${fmtKr(sc.mGross)}</span></div>
+      <div class="metric"><span class="metric-key metric-deduction">↳ Ränteavdrag/mån</span><span class="metric-val metric-deduction">+${fmtKr(sc.mDeduction)}</span></div>
+      <div class="metric"><span class="metric-key">Ränta netto/mån</span><span class="metric-val neg">−${fmtKr(sc.mNet)}</span></div>
+      <div class="metric highlight"><span class="metric-key">Effektiv ränta (efter avdrag)</span><span class="metric-val" style="color:${color}">${fmtPct(sc.effRate)}</span></div>
+
+      <div class="card-section-title">Kassaflöde</div>
+      <div class="metric"><span class="metric-key">Amortering/mån</span><span class="metric-val blue">${sc.mAmort > 0 ? fmtKr(sc.mAmort) : '0 kr'}</span></div>
+      <div class="metric"><span class="metric-key">Avgift bostadsrätt/mån</span><span class="metric-val neg">−${fmtKr(sc.fee)}</span></div>
+      <div class="metric highlight"><span class="metric-key">Total boendeutgift/mån</span><span class="metric-val neg">−${fmtKr(sc.mTotal)}</span></div>
+      <div class="metric"><span class="metric-key">Fondtillskott/mån</span><span class="metric-val pos">${fmtKr(sc.monthlyFundContrib)}</span></div>
+
+      <div class="cost-compare-box">
+        <div class="cost-compare-header">// Jämförelse vs nuvarande boende</div>
+        <div class="cost-compare-inner">
+          <div class="cost-row"><span class="cost-row-key">Nuvarande kostnad/mån</span><span class="cost-row-val">${fmtKr(curCost)}</span></div>
+          <div class="cost-row" style="border-bottom:1px solid var(--border)">
+            <span class="cost-row-key">Ny kostnad inkl. amortering</span>
+            <span class="cost-row-val">${fmtKr(sc.mTotal)}</span>
+          </div>
+          ${sc.mAmort > 0 ? `
+          <div class="cost-row" style="font-size:.73rem">
+            <span class="cost-row-key" style="color:var(--muted)">↳ varav amortering</span>
+            <span class="cost-row-val" style="color:var(--accent-b)">+${fmtKr(sc.mAmort)}</span>
+          </div>
+          <div class="cost-row">
+            <span class="cost-row-key">Ny kostnad exkl. amortering</span>
+            <span class="cost-row-val">${fmtKr(sc.mTotal - sc.mAmort)}</span>
+          </div>` : ''}
+          <div class="cost-diff-row ${diffClass}" style="margin-top:.4rem">
+            <span>${costDiff <= 0 ? '▼' : '▲'} inkl. amortering: ${diffLabel}</span>
+            <span style="font-family:'DM Mono',monospace;font-size:.72rem">${curCost > 0 ? (costDiff > 0 ? '+' : '') + Math.round(costDiff/curCost*100) + '%' : ''}</span>
+          </div>
+          ${sc.mAmort > 0 ? (() => {
+            const diffEx = sc.mTotal - sc.mAmort - curCost;
+            const cls    = diffEx <= 0 ? 'cheaper' : 'pricier';
+            const lbl    = diffEx <= 0 ? `${fmtKr(Math.abs(diffEx))} billigare/mån` : `${fmtKr(diffEx)} dyrare/mån`;
+            return `<div class="cost-diff-row ${cls}" style="margin-top:.3rem">
+              <span>${diffEx <= 0 ? '▼' : '▲'} exkl. amortering: ${lbl}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:.72rem">${curCost > 0 ? (diffEx > 0 ? '+' : '') + Math.round(diffEx/curCost*100) + '%' : ''}</span>
+            </div>`;
+          })() : ''}
+        </div>
+      </div>
+
+      <div class="card-section-title">Avkastning</div>
+      <div class="metric"><span class="metric-key">Hävstång ROE/år</span><span class="metric-val pos">${sc.roe.toFixed(1)}%</span></div>
+      <div class="metric highlight"><span class="metric-key" style="font-weight:700">Nettoförmögenhet år ${state.years}</span><span class="metric-val" style="color:${color};font-size:.9rem;font-weight:700">${fmtKr(sc.final)}</span></div>
+
+      <div class="analysis-box"><strong>Kassaflödesanalys</strong><br>${amortAnalysis}</div>
+    </div>
+  `;
+}
+
+function render() {
+  const c = calc(state);
+  const P = c.P;
+
+  $('results-grid').innerHTML =
+    cardHtml(c.A, '50% belåning<br>Noll amortering', 'var(--accent-a)', 'A', 0,        c) +
+    cardHtml(c.C, '60% belåning<br>1% amortering',   'var(--accent-c)', 'C', P * 0.10, c) +
+    cardHtml(c.B, '70% belåning<br>1% amortering',   'var(--accent-b)', 'B', P * 0.20, c);
+
+  $('breakeven-b').textContent = fmtPct(c.beB) + '/år';
+  $('breakeven-c').textContent = fmtPct(c.beC) + '/år';
+
+  const labels = { A: 'A (50%)', B: 'B (70%)', C: 'C (60%)' };
+  const best   = c.sorted[0];
+  const spread = c.finals[best] - c.finals[c.sorted[2]];
+
+  const riskTag = state.rate >= 4.5 ? `<span class="tag warn">Hög ränterisk</span>` : `<span class="tag green">Låg ränterisk</span>`;
+  const fundTag = state.fundReturn < c.beB + 1 ? `<span class="tag warn">Smal marginal vs break-even</span>` : `<span class="tag green">God marginal vs break-even</span>`;
+
+  $('verdict').innerHTML = `
+    <div class="verdict-badge">📊</div>
+    <div class="verdict-text">
+      <h3>Scenario ${labels[best]} leder efter ${state.years} år</h3>
+      <p>Ranking: ${c.sorted.map(k=>labels[k]).join(' → ')} · Spread bäst–sämst: <strong>${fmtKr(spread)}</strong><br>
+      Break-even B vs A: <strong>${fmtPct(c.beB)}/år</strong> · Break-even C vs A: <strong>${fmtPct(c.beC)}/år</strong><br>
+      ${riskTag}${fundTag}</p>
+    </div>`;
+
+  drawChart(c.A.data, c.C.data, c.B.data, state.years);
+}
+
+function drawChart(dataA, dataC, dataB, years) {
+  const canvas = $('chart');
+  const dpr = window.devicePixelRatio || 1;
+  const W   = canvas.parentElement.clientWidth - 48;
+  const H   = 230;
+  canvas.width  = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  const pad  = { top: 20, right: 20, bottom: 36, left: 92 };
+  const cW   = W - pad.left - pad.right;
+  const cH   = H - pad.top  - pad.bottom;
+  const allV = [...dataA, ...dataC, ...dataB];
+  const minV = Math.min(...allV) * 0.94;
+  const maxV = Math.max(...allV) * 1.04;
+  const xOf  = i => pad.left + (i / years) * cW;
+  const yOf  = v => pad.top  + cH - ((v - minV) / (maxV - minV)) * cH;
+
+  ctx.fillStyle = '#16181f'; ctx.fillRect(0, 0, W, H);
+  ctx.strokeStyle = '#2a2d38'; ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    const y = pad.top + (i / 4) * cH;
+    ctx.beginPath(); ctx.moveTo(pad.left, y); ctx.lineTo(W - pad.right, y); ctx.stroke();
+    const val = maxV - (i / 4) * (maxV - minV);
+    ctx.fillStyle = '#7a7f94'; ctx.font = '11px DM Mono,monospace'; ctx.textAlign = 'right';
+    ctx.fillText((val / 1e6).toFixed(1) + ' mkr', pad.left - 8, y + 4);
+  }
+  ctx.fillStyle = '#7a7f94'; ctx.textAlign = 'center';
+  const step = Math.ceil(years / 6);
+  for (let i = 0; i <= years; i += step) ctx.fillText('År ' + i, xOf(i), H - 8);
+
+  function line(data, color) {
+    ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+    data.forEach((v,i) => i===0 ? ctx.moveTo(xOf(i),yOf(v)) : ctx.lineTo(xOf(i),yOf(v)));
+    ctx.stroke();
+    const g = ctx.createLinearGradient(0, pad.top, 0, H - pad.bottom);
+    g.addColorStop(0, color + '1a'); g.addColorStop(1, color + '00');
+    ctx.beginPath();
+    data.forEach((v,i) => i===0 ? ctx.moveTo(xOf(i),yOf(v)) : ctx.lineTo(xOf(i),yOf(v)));
+    ctx.lineTo(xOf(years), H - pad.bottom); ctx.lineTo(pad.left, H - pad.bottom);
+    ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+    ctx.beginPath(); ctx.arc(xOf(years), yOf(data[data.length-1]), 5, 0, Math.PI*2);
+    ctx.fillStyle = color; ctx.fill();
+  }
+  line(dataA, '#c8f56a');
+  line(dataC, '#f9a84d');
+  line(dataB, '#5b8fff');
+}
+
+function bindSlider(id, key, displayId, fmt) {
+  $(id).addEventListener('input', e => {
+    state[key] = parseFloat(e.target.value);
+    $(displayId).textContent = fmt(state[key]);
+    render();
+  });
+}
+
+bindSlider('sl-purchase',    'purchase',       'val-purchase',   v => (v/1e6).toFixed(1).replace('.',',') + ' mkr');
+bindSlider('sl-rate',        'rate',           'val-rate',       v => v.toFixed(1).replace('.',',') + '%');
+bindSlider('sl-fee',         'fee',            'val-fee',        v => Math.round(v).toLocaleString('sv-SE') + ' kr');
+bindSlider('sl-currentcost', 'currentCost',    'val-currentcost',v => Math.round(v).toLocaleString('sv-SE') + ' kr');
+bindSlider('sl-fund',        'fundReturn',     'val-fund',       v => v.toFixed(1).replace('.',',') + '%');
+bindSlider('sl-housing',     'housingGrowth',  'val-housing',    v => v.toFixed(1).replace('.',',') + '%');
+bindSlider('sl-years',       'years',          'val-years',      v => Math.round(v) + ' år');
+bindSlider('sl-existing',    'existingSavings','val-existing',   v => Math.round(v).toLocaleString('sv-SE') + ' kr');
+bindSlider('sl-monthly',     'monthlyBudget',  'val-monthly',    v => Math.round(v).toLocaleString('sv-SE') + ' kr');
+
+window.addEventListener('resize', () => { const c = calc(state); drawChart(c.A.data, c.C.data, c.B.data, state.years); });
+
+render();
+</script>
+</body>
+</html>
