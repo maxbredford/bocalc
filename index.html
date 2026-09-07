@@ -419,18 +419,20 @@ function driftAr(){ return S.drift.reduce((a,d)=>a+(+d.v||0),0)*12; }
 function amortAr(){ return lanebelopp()*amortPct() + (+S.extraAmort||0)*12; }
 
 /* ---------- rendering ---------- */
-function renderLant(){
+function buildLantRows(){
   const tb = document.getElementById("lantRows"); tb.innerHTML="";
   S.lantagare.forEach((p,i)=>{
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><input data-pi="${i}" data-pk="namn" value="${esc(p.namn)}"></td>
-      <td><input class="amt" type="number" step="1" data-pi="${i}" data-pk="marg" value="${p.marg}"></td>
-      <td><input class="amt" type="number" step="5" data-pi="${i}" data-pk="andel" value="${p.andel}"></td>
+      <td><input class="amt" type="number" inputmode="decimal" step="1" data-pi="${i}" data-pk="marg" value="${p.marg}"></td>
+      <td><input class="amt" type="number" inputmode="decimal" step="5" data-pi="${i}" data-pk="andel" value="${p.andel}"></td>
       <td><select data-pi="${i}" data-pk="arbgiv">${["Swedbank","Nordea","Ingen"].map(b=>`<option ${b===p.arbgiv?"selected":""}>${b}</option>`).join("")}</select></td>
       <td><button class="tiny" data-pdel="${i}">Ta bort</button></td>`;
     tb.appendChild(tr);
   });
+}
+function updateLant(){
   const f = document.getElementById("lantFlags"); f.innerHTML="";
   const sa = S.lantagare.reduce((a,p)=>a+(+p.andel||0),0);
   if(Math.abs(sa-100)>0.01) f.innerHTML += `<div class="flag">Andelarna summerar till ${sa.toFixed(0)} procent. Kalkylen normerar dem till 100.</div>`;
@@ -441,22 +443,31 @@ function renderLant(){
   });
 }
 
-function renderLoans(){
-  const c = costOf(S.loans);
+function buildLoanRows(){
   const tb = document.getElementById("loanRows"); tb.innerHTML="";
   S.loans.forEach((l,i)=>{
-    const p = c.parts[i];
     const tr = document.createElement("tr");
     tr.innerHTML = `
       <td><select data-i="${i}" data-k="bank">${BANKER.map(b=>`<option ${b===l.bank?"selected":""}>${b}</option>`).join("")}</select></td>
       <td><select data-i="${i}" data-k="typ">${["Personallån","Övrigt"].map(t=>`<option ${t===l.typ?"selected":""}>${t}</option>`).join("")}</select></td>
       <td><select data-i="${i}" data-k="bind">${BINDS.map(b=>`<option ${b===l.bind?"selected":""}>${b}</option>`).join("")}</select></td>
-      <td><input class="amt" type="number" step="50000" data-i="${i}" data-k="belopp" value="${l.belopp}"></td>
-      <td>${p?pct(p.r):"–"}</td>
-      <td>${p?pct(p.jb):"–"}</td>
-      <td>${p?kr(p.bel*p.r/12):"–"}</td>
+      <td><input class="amt" type="number" inputmode="numeric" step="50000" data-i="${i}" data-k="belopp" value="${l.belopp}"></td>
+      <td data-out="r">–</td>
+      <td data-out="jb">–</td>
+      <td data-out="mon">–</td>
       <td><button class="tiny" data-del="${i}">Ta bort</button></td>`;
     tb.appendChild(tr);
+  });
+}
+function updateLoans(){
+  const c = costOf(S.loans);
+  const rows = document.getElementById("loanRows").children;
+  S.loans.forEach((l,i)=>{
+    const tr = rows[i]; if(!tr) return;
+    const p = c.parts[i];
+    tr.querySelector('[data-out="r"]').textContent   = p?pct(p.r):"–";
+    tr.querySelector('[data-out="jb"]').textContent  = p?pct(p.jb):"–";
+    tr.querySelector('[data-out="mon"]').textContent = p?kr(p.bel*p.r/12):"–";
   });
   const sum = S.loans.reduce((a,l)=>a+(+l.belopp||0),0);
   document.getElementById("loanSum").textContent = kr(sum);
@@ -646,7 +657,7 @@ function renderOpt(){
     const s = scen[+btn.dataset.use];
     S.huvudbank = s.hb;
     S.loans = s.alloc.map(p=>({bank:p.bank,typ:p.typ,bind:p.bind,belopp:Math.round(p.belopp)}));
-    pushFields(); renderAll();
+    pushFields(); rebuildAll();
     document.getElementById("loanRows").scrollIntoView({behavior:"smooth",block:"center"});
   });
 }
@@ -683,22 +694,12 @@ function pullFields(){ FIELDS.forEach(f=>{ const el=document.getElementById(f);
   if(!el || el.disabled) return;
   S[f] = el.type==="number" ? +el.value : el.value; }); }
 
-function fokusNyckel(el){
-  if(!el||!el.dataset) return null;
-  if(el.tagName!=="INPUT" && el.tagName!=="SELECT") return null;
-  const k = [el.id||"", el.dataset.i??"", el.dataset.k??"", el.dataset.pi??"", el.dataset.pk??"", el.dataset.drift??""].join("|");
-  return k==="|||||" ? null : k;
-}
+// renderAll rör aldrig fälten man skriver i, bara det som räknas fram.
+// rebuildAll byggs bara om när antalet rader ändras eller data laddas in.
 function renderAll(){
-  const a = document.activeElement, key = fokusNyckel(a);
-  let caret = null;
-  try{ caret = a && a.selectionStart; }catch(e){}
-  syncLoanFields(); renderLant(); renderLoans(); renderCost(); renderStress(); renderEng(); renderJamf();
-  if(key){
-    const el = Array.from(document.querySelectorAll("input,select")).find(e=>fokusNyckel(e)===key);
-    if(el && el!==document.activeElement){ el.focus(); try{ if(caret!=null) el.setSelectionRange(caret,caret); }catch(e){} }
-  }
+  syncLoanFields(); updateLant(); updateLoans(); renderCost(); renderStress(); renderEng(); renderJamf();
 }
+function rebuildAll(){ buildLantRows(); buildLoanRows(); renderAll(); }
 
 document.addEventListener("input", e=>{
   if(e.target.dataset.pi!==undefined){
@@ -721,22 +722,22 @@ document.addEventListener("input", e=>{
   }
 });
 document.addEventListener("click", e=>{
-  if(e.target.dataset.del!==undefined){ S.loans.splice(+e.target.dataset.del,1); renderAll(); }
+  if(e.target.dataset.del!==undefined){ S.loans.splice(+e.target.dataset.del,1); rebuildAll(); }
   if(e.target.dataset.pdel!==undefined){
     if(S.lantagare.length<=1){ alert("Minst en låntagare krävs."); return; }
-    S.lantagare.splice(+e.target.dataset.pdel,1); renderAll();
+    S.lantagare.splice(+e.target.dataset.pdel,1); rebuildAll();
   }
 });
 document.getElementById("addLant").onclick = ()=>{
-  S.lantagare.push({namn:"Låntagare "+(S.lantagare.length+1),marg:53,andel:0,arbgiv:"Ingen"}); renderAll(); };
+  S.lantagare.push({namn:"Låntagare "+(S.lantagare.length+1),marg:53,andel:0,arbgiv:"Ingen"}); rebuildAll(); };
 document.getElementById("addLoan").onclick = ()=>{
-  S.loans.push({bank:S.huvudbank,typ:"Övrigt",bind:"3 mån",belopp:0}); renderAll(); };
+  S.loans.push({bank:S.huvudbank,typ:"Övrigt",bind:"3 mån",belopp:0}); rebuildAll(); };
 document.getElementById("fillRest").onclick = ()=>{
   const sum = S.loans.reduce((a,l)=>a+(+l.belopp||0),0);
   const diff = lanebelopp()-sum;
   if(S.loans.length===0) S.loans.push({bank:S.huvudbank,typ:"Övrigt",bind:"3 mån",belopp:0});
   const last = S.loans[S.loans.length-1];
-  last.belopp = Math.max(0, last.belopp+diff); renderAll(); };
+  last.belopp = Math.max(0, last.belopp+diff); rebuildAll(); };
 document.getElementById("runOpt").onclick = renderOpt;
 document.getElementById("save").onclick = ()=>{
   const blob = new Blob([JSON.stringify({S,RATES},null,1)],{type:"application/json"});
@@ -750,7 +751,7 @@ document.getElementById("loadFile").onchange = ev=>{
       const d=JSON.parse(fr.result);
       if(d.S){ S = migrera(d.S); }
       if(d.RATES){ RATES.Swedbank=d.RATES.Swedbank; RATES.Nordea=d.RATES.Nordea; }
-      pushFields(); renderRates(); renderDrift(); renderAll();
+      pushFields(); renderRates(); renderDrift(); rebuildAll();
     }catch(err){ alert("Filen gick inte att läsa."); }
   };
   fr.readAsText(ev.target.files[0]);
@@ -793,7 +794,7 @@ document.getElementById("themeBtn").onclick = ()=>{
 mq.addEventListener("change", applyTheme);
 applyTheme();
 
-pushFields(); renderRates(); renderDrift(); renderAll();
+pushFields(); renderRates(); renderDrift(); rebuildAll();
 </script>
 </body>
 </html>
