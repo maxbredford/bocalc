@@ -118,6 +118,9 @@
   <div class="figure" id="heroFig">–</div>
   <div class="heroline">
     <div>Med amortering<b id="heroTot">–</b></div>
+    <div>Per kvm exkl. amortering<b id="heroKvmEx">–</b></div>
+    <div>Per kvm med amortering<b id="heroKvmTot">–</b></div>
+    <div>Pris per kvm<b id="heroKvmPris">–</b></div>
     <div>Snittränta<b id="heroRate">–</b></div>
     <div>Jämförbar bruttoränta<b id="heroJb">–</b></div>
     <div>Belåningsgrad<b id="heroLtv">–</b></div>
@@ -140,6 +143,7 @@
     <div><label>Belåningsgrad i procent</label><input id="ltvIn" type="number" step="1"></div>
     <div><label>Lånebelopp</label><input id="lanIn" type="number" step="50000"></div>
     <div><label>Extra amortering per månad</label><input id="extraAmort" type="number" step="500"></div>
+    <div><label>Boyta i kvadratmeter</label><input id="boyta" type="number" step="1" min="0" placeholder="fyll i för kr per kvm"></div>
     <div><label>Bostadstyp</label>
       <select id="typ"><option>Bostadsrätt</option><option>Villa</option></select></div>
   </div>
@@ -290,7 +294,7 @@ const TAK_AVDRAG = 100000, AVD_LAG = 0.30, AVD_HOG = 0.21;
 
 let S = {
   pris:11500000, driver:"kontant", kontant:3450000, ltvIn:70, lanIn:8050000,
-  typ:"Bostadsrätt", extraAmort:0,
+  typ:"Bostadsrätt", extraAmort:0, boyta:"",
   lantagare:[{namn:"Låntagare 1",marg:53,andel:50,arbgiv:"Swedbank"},
              {namn:"Låntagare 2",marg:53,andel:50,arbgiv:"Nordea"}],
   huvudbank:"Swedbank", hbKrav:"ja",
@@ -305,6 +309,9 @@ let S = {
 
 const kr = n => (isFinite(n)?Math.round(n):0).toLocaleString("sv-SE")+" kr";
 const pct = n => isFinite(n) ? (n*100).toFixed(2).replace(".",",")+" %" : "–";
+const boytaVal = () => { const v = +S.boyta;
+  return (S.boyta===""||S.boyta===null||!isFinite(v)||v<=0) ? null : v; };
+const krKvm = n => { const b = boytaVal(); return b ? kr(n/b) : "–"; };
 const tak = b => b==="Swedbank" ? +S.takSwed||0 : +S.takNord||0;
 const persRab = b => b==="Swedbank" ? +S.rabSwed||0 : +S.rabNord||0;
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
@@ -519,6 +526,9 @@ function renderCost(){
 
   document.getElementById("heroFig").innerHTML = kr((c.netto+drift)/12).replace(" kr",'<small> kr/mån</small>');
   document.getElementById("heroTot").textContent = kr((c.netto+drift+am)/12);
+  document.getElementById("heroKvmEx").textContent = krKvm((c.netto+drift)/12);
+  document.getElementById("heroKvmTot").textContent = krKvm((c.netto+drift+am)/12);
+  document.getElementById("heroKvmPris").textContent = krKvm(+S.pris||0);
   const sum = S.loans.reduce((a,l)=>a+(+l.belopp||0),0);
   document.getElementById("heroRate").textContent = sum>0?pct(c.brutto/sum):"–";
   document.getElementById("heroJb").textContent = sum>0?pct(c.jbSnitt):"–";
@@ -686,12 +696,13 @@ function renderDrift(){
   document.querySelectorAll("[data-drift]").forEach(el=>el.oninput=()=>{
     S.drift[+el.dataset.drift].v = +el.value||0; renderCost(); renderStress(); });
 }
-const FIELDS = ["pris","driver","kontant","ltvIn","lanIn","typ","extraAmort","huvudbank","hbKrav",
+const FIELDS = ["pris","driver","kontant","ltvIn","lanIn","typ","extraAmort","boyta","huvudbank","hbKrav",
   "slrNov","slrVecka","slrPaslag","slrGolv","takSwed","takNord","rabSwed","rabNord","persAll",
   "formanAlla","utrymme","pantbrev","brfAvg","ovrigtKop"];
 function pushFields(){ FIELDS.forEach(f=>{ const el=document.getElementById(f); if(el) el.value = S[f]; }); }
 function pullFields(){ FIELDS.forEach(f=>{ const el=document.getElementById(f);
   if(!el || el.disabled) return;
+  if(f==="boyta"){ S.boyta = el.value.trim()==="" ? "" : +el.value; return; }
   S[f] = el.type==="number" ? +el.value : el.value; }); }
 
 // renderAll rör aldrig fälten man skriver i, bara det som räknas fram.
@@ -769,6 +780,7 @@ function migrera(o){
     d.slrNov = Math.max(0, (+o.jamf||0.0405) - 0.015);
     d.slrVecka = d.slrNov; d.slrPaslag = 0.015; d.slrGolv = 0.005;
   }
+  if(d.boyta===undefined || d.boyta===null || !isFinite(+d.boyta) || +d.boyta<=0) d.boyta = "";
   if(!d.huvudbank) d.huvudbank = "Swedbank";
   if(!d.hbKrav) d.hbKrav = "ja";
   delete d.jamf; delete d.marg;
