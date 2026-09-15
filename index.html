@@ -284,9 +284,9 @@ const BINDS = ["3 mån","1 år","2 år","3 år","4 år","5 år","6 år","7 år",
 const BANKER = ["Swedbank","Nordea"];
 const RATES = {
   Swedbank:{list:[3.89,3.49,3.64,3.79,3.89,3.99,4.14,4.14,4.14,4.14,4.19],
-            rab: [1.62,0.89,0.73,0.92,0.62,0.69,0.79,0.71,0.63,0.57,0.42]},
+            rab: [1.62,0.89,0.73,0.92,0.62,0.69,0.77,0.70,0.65,0.60,0.60]},
   Nordea:  {list:[3.94,3.64,3.73,3.78,3.89,3.99,null,null,4.14,null,null],
-            rab: [1.20,0.50,0.40,0.35,0.35,0.40,null,null,0.25,null,null]}
+            rab: [1.15,0.30,0.20,0.15,0.05,0.05,null,null,0.05,null,null]}
 };
 const DRIFT_DEF = [["Månadsavgift",5743],["El",0],["Vatten och avlopp",0],["Värme",0],
   ["Bredband och TV",0],["Parkering",0],["Hemförsäkring",0],["Underhållsreserv",0],["Övrigt",0]];
@@ -315,8 +315,8 @@ const LIMITS = {
 };
 
 let S = {
-  pris:11500000, driver:"kontant", kontant:3450000, ltvIn:70, lanIn:8050000,
-  typ:"Bostadsrätt", boyta:0, extraAmort:0,
+  pris:12000000, driver:"ltv", kontant:6000000, ltvIn:50, lanIn:6000000,
+  typ:"Bostadsrätt", boyta:141, extraAmort:0,
   lantagare:[{namn:"Låntagare 1",marg:53,andel:50,arbgiv:"Swedbank"},
              {namn:"Låntagare 2",marg:53,andel:50,arbgiv:"Nordea"}],
   huvudbank:"Swedbank", hbKrav:"ja",
