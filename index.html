@@ -232,12 +232,11 @@
 
     <h3>Jämförelseränta för ränteförmån</h3>
     <div class="grid">
-      <div><label>Statslåneränta 30 nov föregående år <span class="unit">%</span></label><input id="slrNov" type="number" inputmode="decimal" min="0" max="25" step="0.05"></div>
-      <div><label>Statslåneränta vid lånetillfället <span class="unit">%</span></label><input id="slrVecka" type="number" inputmode="decimal" min="0" max="25" step="0.05"></div>
+      <div><label>Statslåneränta vid lånetillfället <span class="unit">%</span></label><input id="slr" type="number" inputmode="decimal" min="0" max="25" step="0.05"></div>
       <div><label>Påslag <span class="unit">procentenheter</span></label><input id="slrPaslag" type="number" inputmode="decimal" min="0" max="25" step="0.05"></div>
       <div><label>Golv för statslåneräntan <span class="unit">%</span></label><input id="slrGolv" type="number" inputmode="decimal" min="0" max="25" step="0.05"></div>
     </div>
-    <p class="note">Rörliga lån jämförs mot statslåneräntan den 30 november året före beskattningsåret plus påslaget. Bundna och räntefria lån jämförs i stället mot statslåneräntan den vecka lånet tecknas, och den nivån ligger fast under bindningstiden. Veckoräntan finns hos Riksgälden.</p>
+    <p class="note">Enligt Skatteverket jämförs alla lån, oavsett bindningstid (3 månader eller längre), mot statslåneräntan vid lånetillfället plus påslaget, med golvet som lägsta nivå. Räntan hämtas hos Riksgälden och ligger fast under lånets bindningstid.</p>
     <div class="scroll"><table><tbody id="jamfRows"></tbody></table></div>
 
     <h3>Personallån</h3>
@@ -309,7 +308,7 @@ const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&l
 /* ---------- gränser per fält, tillämpas vid varje inläsning ---------- */
 const LIMITS = {
   pris:[0,1e9], kontant:[0,1e9], ltvIn:[0,100], lanIn:[0,1e9], extraAmort:[0,1e6],
-  boyta:[0,10000], slrNov:[0,MAX_PCT], slrVecka:[0,MAX_PCT], slrPaslag:[0,MAX_PCT],
+  boyta:[0,10000], slr:[0,MAX_PCT], slrPaslag:[0,MAX_PCT],
   slrGolv:[0,MAX_PCT], takSwed:[0,5e7], takNord:[0,5e7], rabSwed:[0,MAX_PCT],
   rabNord:[0,MAX_PCT], utrymme:[0,1e7], pantbrev:[0,1e9], brfAvg:[0,1e7], ovrigtKop:[0,1e7]
 };
@@ -320,7 +319,7 @@ let S = {
   lantagare:[{namn:"Låntagare 1",marg:53,andel:50,arbgiv:"Swedbank"},
              {namn:"Låntagare 2",marg:53,andel:50,arbgiv:"Nordea"}],
   huvudbank:"Swedbank", hbKrav:"ja",
-  slrNov:2.55, slrVecka:2.99, slrPaslag:1.50, slrGolv:0.50,
+  slr:2.99, slrPaslag:1.50, slrGolv:0.50,
   takSwed:2000000, takNord:3000000, rabSwed:2.15, rabNord:2.15, persAll:"alla",
   formanAlla:"pers", utrymme:25000, pantbrev:0, brfAvg:0, ovrigtKop:0,
   drift: DRIFT_DEF.map(d=>({namn:d[0],v:d[1]})),
@@ -346,8 +345,8 @@ const margOf = i => clamp(num(S.lantagare[i].marg),0,100)/100;
 
 /* ---------- räntor och jämförelseränta ---------- */
 function jamfFor(bind){
-  const slr = bind==="3 mån" ? P(S.slrNov) : P(S.slrVecka);
-  return Math.max(P(S.slrGolv), slr) + P(S.slrPaslag);
+  // Samma statslåneränta gäller för alla bindningstider (3 mån eller längre).
+  return Math.max(P(S.slrGolv), P(S.slr)) + P(S.slrPaslag);
 }
 function listOf(bank,i){
   const v = RATES[bank].list[i];
@@ -553,9 +552,6 @@ function updateLoans(){
   }
   S.loans.forEach((l,i)=>{ if(c.rows[i] && !c.rows[i].ok)
     f.innerHTML += `<div class="flag bad">${l.bank} har ingen ränta för ${l.bind}.</div>`; });
-  const bundna = [...new Set(S.loans.filter(l=>l.typ==="Personallån" && l.bind!=="3 mån").map(l=>l.bind))];
-  if(bundna.length)
-    f.innerHTML += `<div class="flag">Personallån med bindning ${bundna.join(", ")} jämförs mot statslåneräntan vid lånetillfället, ${pct(jamfFor(bundna[0]))}, som ligger fast under bindningstiden.</div>`;
 }
 
 /* ---------- kostnad ---------- */
@@ -737,9 +733,10 @@ function renderOpt(){
 
 /* ---------- tabeller i inställningarna ---------- */
 function renderJamf(){
+  // Jämförelseräntan är densamma oavsett bindningstid, så en rad räcker.
   document.getElementById("jamfRows").innerHTML =
-    `<tr><th>Bindning</th><th>Jämförelseränta</th><th>Grund</th></tr>` +
-    BINDS.map(b=>`<tr><td>${b}</td><td>${pct(jamfFor(b))}</td><td>${b==="3 mån"?"SLR 30 november":"SLR vid lånetillfället"}</td></tr>`).join("");
+    `<tr><th>Gäller</th><th>Jämförelseränta</th><th>Grund</th></tr>
+     <tr><td>Alla bindningstider</td><td>${pct(jamfFor())}</td><td>max(golv, SLR) + påslag</td></tr>`;
 }
 function renderRates(){
   document.getElementById("rateRows").innerHTML = BINDS.map((b,i)=>{
@@ -763,7 +760,7 @@ function renderDrift(){
 
 /* ---------- fält ---------- */
 const FIELDS = ["pris","driver","kontant","ltvIn","lanIn","typ","boyta","extraAmort","huvudbank","hbKrav",
-  "slrNov","slrVecka","slrPaslag","slrGolv","takSwed","takNord","rabSwed","rabNord","persAll",
+  "slr","slrPaslag","slrGolv","takSwed","takNord","rabSwed","rabNord","persAll",
   "formanAlla","utrymme","pantbrev","brfAvg","ovrigtKop"];
 function pushFields(){ FIELDS.forEach(f=>{ const el=document.getElementById(f); if(el && S[f]!==undefined) el.value = S[f]; }); }
 function pullFields(){
@@ -869,12 +866,20 @@ function migrera(o, gammal){
       namn:"Låntagare "+(i+1), marg:m, andel:+(100/n).toFixed(2),
       arbgiv: i===0?"Swedbank" : (i===1?"Nordea":"Ingen")}));
   }
-  if(o.jamf!==undefined && o.slrNov===undefined){
-    d.slrNov = Math.max(0, num(o.jamf,0.0405) - 0.015);
-    d.slrVecka = d.slrNov; d.slrPaslag = 0.015; d.slrGolv = 0.005;
+  if(o.jamf!==undefined && o.slrNov===undefined && o.slrVecka===undefined && o.slr===undefined){
+    d.slr = Math.max(0, num(o.jamf,0.0405) - 0.015);
+    d.slrPaslag = 0.015; d.slrGolv = 0.005;
   }
+  // slrNov (statslåneränta 30 nov) och slrVecka (vid lånetillfället) slogs ihop till
+  // en gemensam statslåneränta 2026, eftersom Skatteverket använder samma bas för
+  // alla bindningstider. Föredra den gamla "vid lånetillfället"-varianten om båda finns.
+  if(d.slr===undefined){
+    const legacy = o.slrVecka!==undefined ? o.slrVecka : o.slrNov;
+    d.slr = legacy!==undefined ? legacy : S.slr;
+  }
+  delete d.slrNov; delete d.slrVecka;
   // procent- respektive decimalformat
-  ["slrNov","slrVecka","slrPaslag","slrGolv","rabSwed","rabNord"].forEach(k=>{
+  ["slr","slrPaslag","slrGolv","rabSwed","rabNord"].forEach(k=>{
     let v = num(d[k]);
     if(gammal || v>0 && v<0.5) v*=100;
     d[k] = clamp(v,0,MAX_PCT);
