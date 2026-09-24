@@ -62,12 +62,13 @@
               font-variant-numeric:tabular-nums}
   .grid{display:grid;grid-template-columns:1fr 1fr;gap:.65rem .9rem}
   label{display:block;font-size:.92rem;color:var(--ink);margin-bottom:.25rem;font-weight:600}
-  input,select{width:100%;font:inherit;font-size:1rem;font-variant-numeric:tabular-nums;
+  input,select,textarea{width:100%;font:inherit;font-size:1rem;font-variant-numeric:tabular-nums;
     color:var(--ink);background:var(--field);border:1.5px solid var(--field-border);
     border-radius:3px;padding:.45rem .5rem}
+  textarea{min-height:7rem;resize:vertical;font-size:.9rem;line-height:1.4}
   input:disabled{background:var(--panel);color:var(--ink);-webkit-text-fill-color:var(--ink);
     opacity:1;border-color:var(--hair);font-weight:700}
-  input:focus,select:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--teal);outline-offset:1px;border-color:var(--teal)}
   table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
   th{font-size:.87rem;font-weight:700;color:var(--ink);text-align:right;padding:.4rem .35rem;
      border-bottom:2px solid var(--hair-strong)}
@@ -82,11 +83,12 @@
   .loans .amt{text-align:right}
   button{font:inherit;font-size:.92rem;background:var(--btn-bg);color:var(--btn-fg);border:none;
          border-radius:3px;padding:.5rem .85rem;cursor:pointer;font-weight:600}
+  button:disabled{opacity:.4;cursor:not-allowed}
   button.ghost{background:transparent;color:var(--teal-text);border:2px solid var(--teal);font-weight:700}
   button.tiny{padding:.28rem .5rem;font-size:.88rem;background:transparent;color:var(--ink);
               border:1.5px solid var(--field-border);font-weight:500}
-  button:hover{opacity:.85}
-  .row-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem}
+  button:hover:not(:disabled){opacity:.85}
+  .row-actions{display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.7rem;align-items:center}
   .flag{font-size:.94rem;font-weight:500;padding:.55rem .65rem;border-left:5px solid var(--amber);
         background:var(--amber-bg);color:var(--amber);margin-top:.55rem}
   .flag.bad{border-color:var(--clay);background:var(--clay-bg);color:var(--clay)}
@@ -102,6 +104,12 @@
   .unit{font-size:.85rem;color:var(--ink-soft);font-weight:500}
   #themeBtn{flex:none;font-size:.85rem;padding:.35rem .6rem;background:transparent;
             color:var(--teal-text);border:1.5px solid var(--teal);white-space:nowrap}
+  .importBox{border:1.5px solid var(--hair);border-radius:3px;padding:.8rem .8rem .9rem;margin-top:.8rem;background:var(--paper)}
+  .importBox ol{margin:.2rem 0 .7rem;padding-left:1.2rem;font-size:.93rem;color:var(--ink-soft)}
+  .importBox a{color:var(--teal-text);font-weight:700}
+  td.up{color:var(--clay);font-weight:700}
+  td.down{color:var(--teal-text);font-weight:700}
+  td.muted{color:var(--ink-soft)}
   @media (max-width:520px){ .grid{grid-template-columns:1fr} .figure{font-size:2.5rem} }
 </style>
 </head>
@@ -227,7 +235,7 @@
 
 <section>
   <h2>Räntor och regler</h2>
-  <details>
+  <details id="rulesDetails">
     <summary>Ränteförmån, personallån och skatteparametrar</summary>
 
     <h3>Jämförelseränta för ränteförmån</h3>
@@ -261,7 +269,28 @@
       <thead><tr><th>Bindning</th><th>Listränta SWE</th><th>Rabatt SWE</th><th>Listränta NOR</th><th>Rabatt NOR</th></tr></thead>
       <tbody id="rateRows"></tbody>
     </table></div>
-    <p class="note">Listräntorna kommer från ursprungsfilen och var daterade 2026-05-29. Kalkylen räknar konsekvent på listränta minus rabatt.</p>
+    <p class="note" id="rateNote"></p>
+    <div class="row-actions">
+      <button class="ghost" id="importOpen" type="button">Läs in aktuella listräntor</button>
+    </div>
+    <div class="importBox" id="importBox" hidden>
+      <div class="grid" style="grid-template-columns:1fr">
+        <div><label for="impBank">Bank</label>
+          <select id="impBank"><option>Swedbank</option><option>Nordea</option></select></div>
+      </div>
+      <ol>
+        <li><a id="impLink" href="#" target="_blank" rel="noopener noreferrer">Öppna bankens räntesida</a> i en ny flik.</li>
+        <li>Markera tabellen med listräntor och kopiera. Det går också bra att kopiera hela sidan (Ctrl/Cmd+A, Ctrl/Cmd+C).</li>
+        <li>Klistra in här. Kontrollera förhandsgranskningen och tryck <b>Använd räntorna</b>.</li>
+      </ol>
+      <label for="impText">Inklistrad text</label>
+      <textarea id="impText" spellcheck="false" placeholder="Klistra in tabellen eller hela sidan här"></textarea>
+      <div id="impOut"></div>
+      <div class="row-actions">
+        <button id="impApply" type="button" disabled>Använd räntorna</button>
+        <button class="tiny" id="impClose" type="button">Stäng</button>
+      </div>
+    </div>
   </details>
   <div class="row-actions">
     <button class="ghost" id="save">Spara som fil</button>
@@ -281,11 +310,19 @@
 const VER = 3;
 const BINDS = ["3 mån","1 år","2 år","3 år","4 år","5 år","6 år","7 år","8 år","9 år","10 år"];
 const BANKER = ["Swedbank","Nordea"];
+// Listräntor: Swedbank ändrade 2026-09-18, Nordea ändrade 2026-09-16.
+// Swedbanks enhetliga ränterabatt (lån över personalförmån om 2 mkr) per 2026-09-18.
 const RATES = {
-  Swedbank:{list:[3.89,3.49,3.64,3.79,3.89,3.99,4.14,4.14,4.14,4.14,4.19],
-            rab: [1.62,0.89,0.73,0.92,0.62,0.69,0.77,0.70,0.65,0.60,0.60]},
-  Nordea:  {list:[3.94,3.64,3.73,3.78,3.89,3.99,null,null,4.14,null,null],
+  Swedbank:{list:[3.89,3.62,3.89,3.99,4.09,4.19,4.34,4.34,4.34,4.34,4.39],
+            rab: [1.62,0.86,0.75,0.88,0.58,0.63,0.74,0.71,0.67,0.65,0.67]},
+  Nordea:  {list:[3.94,3.69,3.94,3.99,4.09,4.19,null,null,4.29,null,null],
             rab: [1.15,0.30,0.20,0.15,0.05,0.05,null,null,0.05,null,null]}
+};
+const LIST_DATUM_DEF = {Swedbank:"2026-09-18", Nordea:"2026-09-16"};
+const RAB_DATUM_SWE = "2026-09-18";
+const BANK_URL = {
+  Swedbank:"https://www.swedbank.se/privat/boende-och-bolan/bolanerantor.html",
+  Nordea:"https://www.nordea.se/privat/produkter/bolan/bolanerantor.html"
 };
 const DRIFT_DEF = [["Månadsavgift",5743],["El",0],["Vatten och avlopp",0],["Värme",0],
   ["Bredband och TV",0],["Parkering",0],["Hemförsäkring",0],["Underhållsreserv",0],["Övrigt",0]];
@@ -303,6 +340,7 @@ const P  = v => clamp(num(v), 0, MAX_PCT)/100;      // procenttal -> decimal
 const KR = v => clamp(num(v), 0, MAX_KR);           // kronbelopp
 const kr  = n => (isFinite(n)?Math.round(n):0).toLocaleString("sv-SE")+" kr";
 const pct = n => isFinite(n) ? (n*100).toFixed(2).replace(".",",")+" %" : "–";
+const pp  = v => (v===null||v===undefined||!isFinite(v)) ? "–" : v.toFixed(2).replace(".",",")+" %";
 const esc = s => String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* ---------- gränser per fält, tillämpas vid varje inläsning ---------- */
@@ -322,6 +360,7 @@ let S = {
   slr:2.99, slrPaslag:1.50, slrGolv:0.50,
   takSwed:2000000, takNord:3000000, rabSwed:2.15, rabNord:2.15, persAll:"alla",
   formanAlla:"pers", utrymme:25000, pantbrev:0, brfAvg:0, ovrigtKop:0,
+  listDatum:{...LIST_DATUM_DEF},
   drift: DRIFT_DEF.map(d=>({namn:d[0],v:d[1]})),
   loans:[ {bank:"Swedbank",typ:"Personallån",bind:"3 mån",belopp:2000000},
           {bank:"Nordea",typ:"Personallån",bind:"3 mån",belopp:3000000},
@@ -742,7 +781,7 @@ function renderRates(){
   document.getElementById("rateRows").innerHTML = BINDS.map((b,i)=>{
     const f = (bank,key)=>{ const v=RATES[bank][key][i];
       return (v===null||v===undefined) ? `<td>–</td>` :
-      `<td><input style="width:5.5rem;text-align:right" type="number" inputmode="decimal" min="0" max="25" step="0.05" value="${v}" data-rate="${bank}|${key}|${i}"></td>`; };
+      `<td><input style="width:5.5rem;text-align:right" type="number" inputmode="decimal" min="0" max="25" step="0.01" value="${v}" data-rate="${bank}|${key}|${i}"></td>`; };
     return `<tr><td>${b}</td>${f("Swedbank","list")}${f("Swedbank","rab")}${f("Nordea","list")}${f("Nordea","rab")}</tr>`;
   }).join("");
   document.querySelectorAll("[data-rate]").forEach(el=>el.oninput=()=>{
@@ -750,12 +789,177 @@ function renderRates(){
     RATES[bank][key][+i] = clamp(num(el.value), 0, MAX_PCT);
     renderAll();
   });
+  renderRateNote();
+}
+function renderRateNote(){
+  const d = S.listDatum || {};
+  document.getElementById("rateNote").textContent =
+    `Listräntor: Swedbank ${d.Swedbank||"okänt datum"}, Nordea ${d.Nordea||"okänt datum"}. ` +
+    `Swedbanks enhetliga rabatt gäller från ${RAB_DATUM_SWE}. Kalkylen räknar konsekvent på listränta minus rabatt.`;
 }
 function renderDrift(){
   document.getElementById("driftRows").innerHTML = S.drift.map((d,i)=>
     `<span>${esc(d.namn)}</span><input type="number" inputmode="numeric" min="0" step="100" value="${d.v}" data-drift="${i}">`).join("");
   document.querySelectorAll("[data-drift]").forEach(el=>el.oninput=()=>{
     S.drift[+el.dataset.drift].v = KR(el.value); renderCost(); renderStress(); });
+}
+
+/* ============================================================
+   Inläsning av listräntor från inklistrad text.
+   Bankernas sidor kan inte hämtas direkt från webbläsaren (CORS),
+   så användaren kopierar tabellen och verktyget tolkar texten.
+   Tolkningen är strikt: bara rader som börjar med en bindningstid
+   och i övrigt enbart innehåller procenttal och datum räknas.
+   Swedbank: kolumnerna är snittränta, listränta -> sista värdet.
+   Nordea:   kolumnerna är ränta, ändring, datum -> första värdet,
+             och minst två värden krävs så att snitträntetabellen
+             (ett värde per rad) aldrig läses som listränta.
+   ============================================================ */
+const MANAD = {januari:1,februari:2,mars:3,april:4,maj:5,juni:6,juli:7,augusti:8,
+               september:9,oktober:10,november:11,december:12};
+const RE_BIND = /^(3\s*mån(?:ader)?\.?|\d{1,2}\s*år)\*?(?:\s+([\s\S]*))?$/i;
+const RE_VAL  = /^(-?\d{1,2}[,.]\d{1,3})%?$/;
+const RE_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+function bindIndex(lbl){
+  const s = lbl.toLowerCase().replace(/\s+/g,"").replace(/\.$/,"");
+  if(s==="3mån" || s==="3månader") return 0;
+  const m = s.match(/^(\d{1,2})år$/);
+  if(m){ const n = +m[1]; if(n>=1 && n<=10) return n; }
+  return -1;
+}
+// Tolka en cell som en följd av värden/datum. Returnerar null om något annat ingår.
+function cellValues(txt){
+  const toks = String(txt).replace(/(\d)\s+%/g,"$1%").split(/\s+/).filter(Boolean);
+  const vals=[], dates=[];
+  for(const k of toks){
+    if(RE_DATE.test(k)){ dates.push(k); continue; }
+    const m = k.match(RE_VAL);
+    if(m){ vals.push(num(m[1])); continue; }
+    return null;
+  }
+  return {vals, dates};
+}
+const pad2 = n => String(n).padStart(2,"0");
+function isoDatum(y,m,d){
+  y=+y; m=+m; d=+d;
+  if(!(y>=2000&&y<=2100&&m>=1&&m<=12&&d>=1&&d<=31)) return null;
+  return `${y}-${pad2(m)}-${pad2(d)}`;
+}
+function parseListrantor(text, bank){
+  const res = {rates:{}, datum:null, fel:[], varn:[]};
+  const t = String(text||"").replace(/ /g," ");
+  if(!t.trim()) return res;
+  const harNor = /nordea/i.test(t), harSwe = /swedbank/i.test(t);
+  if(bank==="Swedbank" && harNor && !harSwe){ res.fel.push("Texten verkar komma från Nordea. Byt bank i listan ovan."); return res; }
+  if(bank==="Nordea" && harSwe && !harNor){ res.fel.push("Texten verkar komma från Swedbank. Byt bank i listan ovan."); return res; }
+
+  const cells = t.split(/[\r\n\t|]+/).map(c=>c.trim()).filter(Boolean);
+  const rows = []; let cur = null;
+  cells.forEach(c=>{
+    const m = c.match(RE_BIND);
+    if(m){
+      const i = bindIndex(m[1]);
+      if(i>=0){
+        const cv = cellValues(m[2]||"");
+        if(cv){ cur = {i, vals:cv.vals, dates:cv.dates}; rows.push(cur); }
+        else cur = null;                       // löptext som råkar börja med t.ex. "3 år"
+        return;
+      }
+    }
+    if(cur){
+      const cv = cellValues(c);
+      if(cv){ cur.vals.push(...cv.vals); cur.dates.push(...cv.dates); }
+      else cur = null;
+    }
+  });
+
+  const pick = {};
+  rows.forEach(r=>{
+    let v = null;
+    if(bank==="Swedbank"){ if(r.vals.length>=1 && r.vals.length<=3) v = r.vals[r.vals.length-1]; }
+    else { if(r.vals.length>=2 && r.vals.length<=3) v = r.vals[0]; }
+    if(v===null) return;
+    if(!(v>=0.5 && v<=15)){ res.varn.push(`${BINDS[r.i]}: ${pp(v)} ser orimligt ut och hoppades över.`); return; }
+    if(pick[r.i]===undefined) pick[r.i] = {v, dates:r.dates};
+    else if(Math.abs(pick[r.i].v - v) > 1e-9)
+      res.varn.push(`${BINDS[r.i]} förekommer flera gånger med olika värden. Det första (${pp(pick[r.i].v)}) används.`);
+  });
+  Object.keys(pick).forEach(k=>res.rates[k] = pick[k].v);
+
+  const n = Object.keys(res.rates).length;
+  if(n===0){
+    res.fel.push(`Hittade inga listräntor för ${bank}. Kopiera tabellen med listräntor (eller hela sidan) och försök igen.`);
+    return res;
+  }
+  if(n<3) res.fel.push(`Hittade bara ${n} bindningstid${n>1?"er":""}. Kopiera hela tabellen så att inget missas.`);
+
+  // Datum: Nordea anger per rad, Swedbank i kolumnrubriken.
+  const radDatum = Object.values(pick).flatMap(p=>p.dates).filter(d=>isoDatum(...d.split("-"))).sort();
+  if(radDatum.length) res.datum = radDatum[radDatum.length-1];
+  else {
+    const m = t.match(/ändrad\s+(\d{1,2})\s+([a-zåäö]+)\s+(\d{4})/i);
+    if(m && MANAD[m[2].toLowerCase()]) res.datum = isoDatum(m[3], MANAD[m[2].toLowerCase()], m[1]);
+    if(!res.datum){
+      const m2 = t.match(/(?:uppdaterades senast|ändrad)\s+(\d{4})-(\d{2})-(\d{2})/i);
+      if(m2) res.datum = isoDatum(m2[1],m2[2],m2[3]);
+    }
+  }
+  return res;
+}
+
+let IMP = null;
+function renderImport(){
+  const bank = document.getElementById("impBank").value;
+  const out = document.getElementById("impOut");
+  const btn = document.getElementById("impApply");
+  const text = document.getElementById("impText").value;
+  IMP = null; btn.disabled = true;
+  if(!text.trim()){ out.innerHTML = ""; return; }
+  const r = parseListrantor(text, bank);
+  let html = r.fel.map(f=>`<div class="flag bad">${esc(f)}</div>`).join("");
+  html += r.varn.map(f=>`<div class="flag">${esc(f)}</div>`).join("");
+  const n = Object.keys(r.rates).length;
+  if(n>0){
+    let andrade = 0;
+    html += `<div class="scroll" style="margin-top:.6rem"><table>
+      <thead><tr><th>Bindning</th><th>Nu i verktyget</th><th>Inläst</th><th>Ändring</th></tr></thead><tbody>` +
+      BINDS.map((b,i)=>{
+        const nu = RATES[bank].list[i];
+        const ny = r.rates[i];
+        if(ny===undefined){
+          if(nu===null||nu===undefined) return "";
+          return `<tr><td>${b}</td><td>${pp(nu)}</td><td class="muted" colspan="2">finns inte i texten, behålls</td></tr>`;
+        }
+        const diff = (nu===null||nu===undefined) ? null : ny - nu;
+        if(diff===null || Math.abs(diff)>1e-9) andrade++;
+        const cls = diff===null ? "" : diff>1e-9 ? "up" : diff<-1e-9 ? "down" : "muted";
+        const dtxt = diff===null ? "ny" : Math.abs(diff)<1e-9 ? "oförändrad"
+                   : (diff>0?"+":"−")+Math.abs(diff).toFixed(2).replace(".",",")+" pe";
+        return `<tr><td>${b}</td><td>${pp(nu)}</td><td><b>${pp(ny)}</b></td><td class="${cls}">${dtxt}</td></tr>`;
+      }).join("") + `</tbody></table></div>`;
+    html += `<p class="note" style="margin-top:.5rem">${n} bindningstider hittade, ${andrade} ändras. Datum: ${esc(r.datum || "hittades inte, dagens datum används")}.</p>`;
+    if(!r.fel.length){ IMP = {bank, r}; btn.disabled = false; }
+  }
+  out.innerHTML = html;
+}
+function applyImport(){
+  if(!IMP) return;
+  const {bank, r} = IMP;
+  Object.keys(r.rates).forEach(k=>{ RATES[bank].list[+k] = clamp(r.rates[k],0,MAX_PCT); });
+  const idag = new Date();
+  S.listDatum = {...(S.listDatum||{}), [bank]: r.datum || isoDatum(idag.getFullYear(), idag.getMonth()+1, idag.getDate())};
+  document.getElementById("impText").value = "";
+  document.getElementById("impOut").innerHTML =
+    `<div class="flag ok">Listräntorna för ${esc(bank)} är uppdaterade (${esc(S.listDatum[bank])}). Rabatterna är oförändrade.</div>`;
+  IMP = null; document.getElementById("impApply").disabled = true;
+  renderRates(); renderAll();
+}
+function setImpLink(){
+  const bank = document.getElementById("impBank").value;
+  const a = document.getElementById("impLink");
+  a.href = BANK_URL[bank];
+  a.textContent = `Öppna ${bank}s räntesida`;
 }
 
 /* ---------- fält ---------- */
@@ -780,6 +984,7 @@ function renderAll(){
 function rebuildAll(){ buildLantRows(); buildLoanRows(); renderAll(); }
 
 document.addEventListener("input", e=>{
+  if(e.target.closest("#importBox")) return;           // importpanelen hanteras separat
   if(e.target.dataset.pi!==undefined){
     const i=+e.target.dataset.pi, k=e.target.dataset.pk;
     S.lantagare[i][k] = (k==="marg"||k==="andel") ? clamp(num(e.target.value),0,100) : e.target.value;
@@ -819,6 +1024,21 @@ document.getElementById("fillRest").onclick = ()=>{
   last.belopp = Math.max(0, KR(last.belopp)+diff); rebuildAll(); };
 document.getElementById("runOpt").onclick = renderOpt;
 
+/* ---------- importpanel ---------- */
+document.getElementById("importOpen").onclick = ()=>{
+  const box = document.getElementById("importBox");
+  box.hidden = !box.hidden;
+  if(!box.hidden){ setImpLink(); document.getElementById("impText").focus(); }
+};
+document.getElementById("impClose").onclick = ()=>{
+  document.getElementById("importBox").hidden = true;
+  document.getElementById("impText").value = ""; document.getElementById("impOut").innerHTML = "";
+  IMP = null; document.getElementById("impApply").disabled = true;
+};
+document.getElementById("impBank").onchange = ()=>{ setImpLink(); renderImport(); };
+document.getElementById("impText").addEventListener("input", renderImport);
+document.getElementById("impApply").onclick = applyImport;
+
 /* ---------- spara och öppna ---------- */
 document.getElementById("save").onclick = ()=>{
   const blob = new Blob([JSON.stringify({ver:VER,S,RATES},null,1)],{type:"application/json"});
@@ -848,10 +1068,11 @@ function migreraRates(R, gammal){
     ["list","rab"].forEach(k=>{
       const arr = R[b][k];
       if(!Array.isArray(arr)) return;
-      RATES[b][k] = arr.map(v=>{
+      RATES[b][k] = BINDS.map((_,i)=>{
+        const v = arr[i];
         if(v===null||v===undefined) return null;
         let x = num(v);
-        if(gammal || x<=0.5) x*=100;                 // decimalformat
+        if(gammal || x<=0.5 && k==="list") x*=100;   // decimalformat
         return clamp(x,0,MAX_PCT);
       });
     });
@@ -900,6 +1121,10 @@ function migrera(o, gammal){
   }));
   d.drift = (Array.isArray(d.drift)&&d.drift.length ? d.drift : DRIFT_DEF.map(x=>({namn:x[0],v:x[1]})))
     .map(x=>({namn:String(x.namn||""), v:KR(x.v)}));
+  // Datum för listräntor. Äldre filer saknar fältet och får "okänt datum".
+  const ld = (o.listDatum && typeof o.listDatum==="object") ? o.listDatum : {};
+  d.listDatum = {};
+  BANKER.forEach(b=>{ d.listDatum[b] = (typeof ld[b]==="string" && RE_DATE.test(ld[b])) ? ld[b] : null; });
   if(!BANKER.includes(d.huvudbank)) d.huvudbank = "Swedbank";
   if(d.hbKrav!=="nej") d.hbKrav = "ja";
   if(!["Bostadsrätt","Villa"].includes(d.typ)) d.typ = "Bostadsrätt";
