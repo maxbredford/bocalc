@@ -355,7 +355,7 @@ const BANK_URL = {
   Swedbank:"https://www.swedbank.se/privat/boende-och-bolan/bolanerantor.html",
   Nordea:"https://www.nordea.se/privat/produkter/bolan/bolanerantor.html"
 };
-const DRIFT_DEF = [["Månadsavgift",5743],["El",0],["Vatten och avlopp",0],["Värme",0],
+const DRIFT_DEF = [["Månadsavgift",0],["El",0],["Vatten och avlopp",0],["Värme",0],
   ["Bredband och TV",0],["Parkering",0],["Hemförsäkring",0],["Underhållsreserv",0],["Övrigt",0]];
 const TAK_AVDRAG = 100000, AVD_LAG = 0.30, AVD_HOG = 0.21;
 const MAX_PCT = 25, MAX_KR = 1e10, MAX_TAK = 5e7;
@@ -395,16 +395,15 @@ const LIMITS = {
 };
 
 let S = {
-  pris:12000000, driver:"ltv", kontant:6000000, ltvIn:50, lanIn:6000000,
-  typ:"Bostadsrätt", boyta:141, extraAmort:0,
-  lantagare:[{namn:"Låntagare 1",marg:53,andel:50,arbgiv:"Swedbank"},
-             {namn:"Låntagare 2",marg:53,andel:50,arbgiv:"Nordea"}],
+  pris:0, driver:"ltv", kontant:0, ltvIn:0, lanIn:0,
+  typ:"Bostadsrätt", boyta:0, extraAmort:0,
+  lantagare:[{namn:"Låntagare 1",marg:53,andel:100,arbgiv:"Swedbank"}],
   huvudbank:"Swedbank", hbKrav:"ja",
   lanDatum:idag(), slr:3.07, slrFran:"2026-09-25", slrPaslag:1.50, slrGolv:0.50,
   persAll:"alla", formanAlla:"pers", utrymme:25000, pantbrev:0, brfAvg:0, ovrigtKop:0,
   listDatum:{...LIST_DATUM_DEF},
   drift: DRIFT_DEF.map(d=>({namn:d[0],v:d[1]})),
-  loans:[ {bank:"Swedbank",typ:"Övrigt",bind:"3 mån",belopp:6000000} ]
+  loans:[ {bank:"Swedbank",typ:"Personallån",bind:"3 mån",belopp:0} ]
 };
 
 /* ============================================================
@@ -792,6 +791,12 @@ function optimize(selPers,selOvr,hb){
   return cands[0] || [];
 }
 function renderOpt(){
+  const out = document.getElementById("optOut");
+  // Utan lånebelopp finns inget att optimera. Visa en tydlig rad i stället för en tom tabell.
+  if(!(lanebelopp()>0)){
+    out.innerHTML = `<div class="flag">Ange köpeskilling och belåningsgrad (eller lånebelopp) under Objektet först. Utan lånebelopp finns inget att optimera.</div>`;
+    return;
+  }
   const selP = document.getElementById("optPers").value;
   const selO = document.getElementById("optOvr").value;
   const scen = BANKER.map(hb=>{
@@ -800,7 +805,6 @@ function renderOpt(){
   });
   const bast = scen[0].c.netto<=scen[1].c.netto ? 0 : 1;
   const cOld = costOf(S.loans);
-  const out = document.getElementById("optOut");
 
   const block = (s,i)=>`
     <h3>Huvudbank ${s.hb} ${i===bast?'<span class="pill win">billigast</span>':""}</h3>
