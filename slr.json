@@ -1,4 +1,4 @@
-{"kalla": "https://www.riksgalden.se/globalassets/dokument_sve/statslaneranta/statslanerantor.csv", "senaste": {"datum": "2026-10-02", "ranta": 3.14},"serie":[
+{"kalla": "https://www.riksgalden.se/globalassets/dokument_sve/statslaneranta/statslanerantor.csv", "senaste": {"datum": "2026-10-09", "ranta": 3.07},"serie":[
 ["2000-01-07", 5.82],
 ["2000-01-14", 5.83],
 ["2000-01-21", 5.89],
@@ -1394,5 +1394,6 @@
 ["2026-09-11", 2.99],
 ["2026-09-18", 3.14],
 ["2026-09-25", 3.07],
-["2026-10-02", 3.14]
+["2026-10-02", 3.14],
+["2026-10-09", 3.07]
 ]}
